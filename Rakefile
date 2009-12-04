@@ -5,13 +5,14 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "mzml"
-    gem.summary = %Q{TODO: one-line summary of your gem}
-    gem.description = %Q{TODO: longer description of your gem}
-    gem.email = "angel@upenn.edu"
+    gem.summary = %Q{A non-validating mzML parser}
+    gem.description = %Q{A non-validating mzML parser. MzML is a standard data format for representing mass spectrometry data.}
+    gem.email = "angel@delagoya.com"
     gem.homepage = "http://github.com/delagoya/mzml"
     gem.authors = ["Angel Pizarro"]
     gem.add_development_dependency "rspec", ">= 1.2.9"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
+    gem.add_dependency  "nokogiri", ">= 1.3.3"
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
@@ -34,12 +35,9 @@ task :spec => :check_dependencies
 
 task :default => :spec
 
-require 'rake/rdoctask'
-Rake::RDocTask.new do |rdoc|
+require 'yard'
+YARD::Rake::YardocTask.new do |yardoc|
   version = File.exist?('VERSION') ? File.read('VERSION') : ""
-
-  rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "mzml #{version}"
-  rdoc.rdoc_files.include('README*')
-  rdoc.rdoc_files.include('lib/**/*.rb')
+  yardoc.options = ["--title", "mzml #{version}", "-r", "README.rdoc"] 
+  yardoc.files = ['README*','lib/**/*.rb']
 end

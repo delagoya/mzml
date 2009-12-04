@@ -1,10 +1,13 @@
 = mzml
 
-Description goes here.
+MzML is a standard data format for encoding mass spectrometry data. For more information see mzML the specification at http://psidev.info/index.php?q=node/257
+
+This library is a non-validating mzML version 1.1 parser/reader.
+
 
 == Note on Patches/Pull Requests
  
-* Fork the project.
+* Fork the project. It is hosted @ http://github.com/delagoya/mzml
 * Make your feature addition or bug fix.
 * Add tests for it. This is important so I don't break it in a
   future version unintentionally.
