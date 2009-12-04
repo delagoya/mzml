@@ -1,6 +1,7 @@
-require 'hpricot'
+require 'nokogiri'
 require 'base64'
 require 'zlib'
+
 #--
 # This program is free software; you can redistribute it and/or modify  
 # it under the terms of the GNU Library or "Lesser" General Public      
@@ -41,11 +42,48 @@ require 'zlib'
 #     # get just the 23rd mz value
 #     mz_23 = scan.mz(23)
 
-module MzXml
+module MzML
   BYTEORDER = {"little" =>"e*", "network"=>"g*", "big"=>"g*"}
+  module RGX
+    INDEX_OFFSET = /<indexListOffset>(\d+)<\/indexListOffset>/
+  end    
+
   def parse(xml)
-    Hpricot.xml(xml).root
+    Nokogiri::XML.parse(xml).root
   end
+  class UnsupportedFile < Error
+  end
+  class Doc < File
+    attr_reader :index, :fname
+    def init(mz_fname)
+      unless mz_fname =~ /\.mzML$/
+        raise UnsupportedFile "File extension must be .\"mzML\""
+      end
+      super(mz_fname, "r")
+      @fname = mz_fname
+      @index = self.parse_indeces
+    end
+    
+    def scan(scan_id)
+    end
+    # searches the index for the given parameter
+    # must be part of the native ID
+    
+    def search(str)
+
+    end
+
+    private
+    def parse_indeces
+      self.seek(self.stat.size - 200)
+      # parse the index offset
+      tmp = self.read
+      tmp  =~  MzML::RGX::INDEX_OFFSET
+      self.seek($1.to_i)
+    end
+    
+  end
+
   class Scan
     include MzXml
     
