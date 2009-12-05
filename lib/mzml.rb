@@ -9,26 +9,18 @@ require 'zlib'
 # either version 2 of the License, or (at your option) any later        
 # version.                                                              
 # Author: Angel Pizarro
-# Date: 01/15/2009
+# Date: 12/05/2009
 # Copyright: Angel Pizarro, Copyright (c) University of Pennsylvania.  All rights reserved.
 # 
 
-# == MzXML
-# ds: Angel Pizarro
+# == MzML
+#
+# A non-validating mzML parser. 
 # 
-# A pure-Ruby implementation of the excellent C RAMP mzXML/mzData parsing library from 
-# the Trans Proteomic Pipeline project. 
-# See the {Seattle Proteome Center}[http://tools.proteomecenter.org/software.php] 
-# Web site for more information
-# 
-# Currently the library is pretty stripped down and only handles mzXML 2.X and 3.0 files.
-# The methods are greatly reduced to what I thought made sense from a usage perspective. 
-# Specifically, the InstrumentStruct and RunHeaderStruct are not yet parsed, and the ScanHeaderStruct
-# is actually just a XML node. 
 # ===USAGE:
 # 
 #     require 'mzxml'
-#     mzxml =  MzXml::MzFile.new("test.mzXML")
+#     mzml =  MzML::Doc.new("test.mzXML")
 #     index = mzxml.index # Returns a hash of scan numbers and the file byte position
 #     # get the first scan number
 #     firstScanNumber = index.keys.sort.first
@@ -45,7 +37,15 @@ require 'zlib'
 module MzML
   BYTEORDER = {"little" =>"e*", "network"=>"g*", "big"=>"g*"}
   module RGX
+    # parses out the file offset of the indexList element
     INDEX_OFFSET = /<indexListOffset>(\d+)<\/indexListOffset>/
+    # 
+    SPCT_LIST_START =  /<spetrumList.+count\=["'](\d+)/ 
+    CHRM_LIST_START =  /<chromatogramList.+count\=["'](\d+)/ 
+    SPCT_START = /<spectrum\s/
+    SPCT_END = /<\/spectrum>/
+    CHRM_START = /<chromatogram\s/
+    CHRM_END = /<\/chromatogram>/
   end    
 
   def parse(xml)
@@ -55,13 +55,13 @@ module MzML
   end
   class Doc < File
     attr_reader :index, :fname
-    def init(mz_fname)
+    def initialize(mz_fname)
       unless mz_fname =~ /\.mzML$/
         raise UnsupportedFile "File extension must be .\"mzML\""
       end
       super(mz_fname, "r")
       @fname = mz_fname
-      @index = self.parse_indeces
+      @index = self.parse_index_list
     end
     
     def scan(scan_id)
@@ -74,16 +74,40 @@ module MzML
     end
 
     private
-    def parse_indeces
+    # Parses the IndexList 
+    def parse_index_list
       self.seek(self.stat.size - 200)
       # parse the index offset
       tmp = self.read
       tmp  =~  MzML::RGX::INDEX_OFFSET
+      # if I didn't match anything, compute the index and return 
+      unless ($1) 
+        return compute_index_list
+      end
       self.seek($1.to_i)
+    end
+
+    def compute_index_list
+      @index_list = MzML::Index.new()
+      # start at the beginning.
+      self.rewind
+      # sax parsing approach? or regex?
+      past_pos = self.pos
+      while self.eof
+        
+      end
     end
     
   end
 
+  class Index
+    attr_accessor :spectrum, :chromatogram
+    def initialize()
+      @spectrum = {}
+      @chromatogram = {}
+    end
+  end
+  
   class Scan
     include MzXml
     
