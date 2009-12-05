@@ -35,14 +35,14 @@ require 'zlib'
 #     mz_23 = scan.mz(23)
 
 module MzML
-  BYTEORDER = "e*" # 32 bit little endian
+
   module RGX
     # parses out the file offset of the indexList element
     INDEX_OFFSET = /<indexListOffset>(\d+)<\/indexListOffset>/
     #
-    SPCT_LIST_START =  /<spetrumList.+count\=["'](\d+)/
+    SPCT_LIST_START =  /<spectrumList.+count\=["'](\d+)/
     CHRM_LIST_START =  /<chromatogramList.+count\=["'](\d+)/
-    SPCT_START = /<spectrum\s/
+    SPCT_START = /<spectrum/
     SPCT_END = /<\/spectrum>/
     CHRM_START = /<chromatogram\s/
     CHRM_END = /<\/chromatogram>/
@@ -51,6 +51,7 @@ module MzML
   def parse(xml)
     Nokogiri::XML.parse(xml).root
   end
+
   class UnsupportedFile < Error
   end
   class Doc < File
@@ -61,54 +62,75 @@ module MzML
         raise UnsupportedFile "File extension must be .\"mzML\""
       end
       super(mz_fname, "r")
-      @fname = mz_fname
-      @index = self.parse_index_list
+      @index = parse_index_list
     end
 
     def chromatrogram(chromatogram_id)
+      @index[:chromatogram][chromatogram_id]
     end
 
-    def spectrum(scan_id  )
-    end
-    # searches the index for the given parameter
-    # must be part of the native ID
-
-    def search(str)
-
+    def spectrum(spectrum_id)
+      @index[:spectrum][spectrum_id]
     end
 
-    private
+    # private
     # Parses the IndexList
     def parse_index_list
       self.seek(self.stat.size - 200)
       # parse the index offset
       tmp = self.read
       tmp  =~  MzML::RGX::INDEX_OFFSET
+      offset = $1
       # if I didn't match anything, compute the index and return
-      unless ($1)
+      unless (offset)
         return compute_index_list
       end
-      self.seek($1.to_i)
+      @index = {}
+      self.seek(offset.to_i)
+      tmp = Nokogiri::XML.parse(self.read).root
+      tmp.css("index").each do |i|
+        n = i[:name].to_sym
+        i.css("offset").each do |o|
+          prev = nil
+          @index[n][o[:idRef]] = [o.text().to_i,
+            (@index[n][prev] || offset) ]
+          prev = o[:idRef]
+        end
+      end
+      return @index
     end
 
     def compute_index_list
-      @index_list = MzML::Index.new()
+      @index = {}
       # start at the beginning.
       self.rewind
-      # sax parsing approach? or regex?
-      past_pos = self.pos
-      while self.eof
-
+      # fast forward to the first spectrum or chromatograph
+      rgx_start = /<spectrumList|<chromatogramList/
+      buffer = ''
+      while !self.eof
+        buffer += self.read(1024)
+        if start_pos = buffer =~ rgx_start
+          self.seek start_pos + 10
+          buffer = self.read(200)
+          start_pos = buffer =~ /<spectrum|<chromatogram/
+          self.seek(self.pos - 200 + start_pos)
+          break
+        end
       end
-    end
-
-  end
-
-  class Index
-    attr_accessor :spectrum, :chromatogram
-    def initialize()
-      @spectrum = {}
-      @chromatogram = {}
+      # for each particular entity start to fill in the index
+      buffer = ''
+      rgx_start = /<(spectrum|chromatogram)\s.*id=["']([^"']+)["']/m
+      while !self.eof
+        buffer = self.read(1024)
+        if start_pos = buffer =~ rgx_start
+          curr_pos = self.pos - buffer.length + start_pos
+          @index[$1.to_sym][$2] = [curr_pos, prev_pos]
+          prev_pos = curr_pos
+        end
+        # need to be careful here. debug it.
+        self.seek(self.pos - 100) unless self.eof
+      end
+      return @index
     end
   end
 
@@ -116,8 +138,8 @@ module MzML
     include MzXml
     attr_accessor :id, :default_array_length, :spot_id, :type,\
     :charge, :precursor, :base_peak_mz, :base_peak_intensity, :ms_level, \
-    :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_str, :intensity_str \
-    :mz, :intensity, :precursor_list
+    :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_node, :intensity_node \
+    :mz, :intensity, :precursor_list, :scan_list, :retention_time
     attr_reader :node, :params
 
     # mz & intensity arrays will be don by proper methods maybe.
@@ -150,19 +172,30 @@ module MzML
       # polarity
       # representation
       # precursor list
-      if (@node.xpath("precursorList"))
+      if (@node.xpath("precursorList")[0])
         parse_precursor_list()
       else
         @precursor_list = nil
       end
       # scan list
-      if (@node.xpath("scanList"))
-        parse_scan_list()
+      if (@node.xpath("scanList")[0])
+        @scan_list = parse_scan_list()
       else
         @scan_list = nil
       end
       # binary data
       parse_binary_data()
+    end
+
+    def parse_precursor_list
+      @precursor_list = @node.css("precursorList > precursor").each do |p|
+        [p[:spectrumRef], p]
+      end
+    end
+
+    def parse_scan_list
+      @scan_list = @node.xpath("scanList/scan")
+      @retention_time = @node.xpath("scanList/scan/cvParam[@accesion='MS:1000016']")[0]
     end
 
     def parse_binary_data
@@ -172,10 +205,10 @@ module MzML
         # need to uncompress the data
         data = Zlib::Inflate.inflate(data)
       end
-      # 64-bit floats?
+      # 64-bit floats? default is 32-bit
       dtype = @mz_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
       @mz = data.unpack(dtype)
-      @intensity_node = @node.xpath("binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000514']").first.parent
+      @intensity_node = @node.xpath("binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000515']").first.parent
       data = Base64.decode64(@intensity_node.xpath("binary").text)
       if @intensity_node.xpath("cvParam[@accession='MS:1000574']")[0]
         # need to uncompress the data
@@ -185,169 +218,8 @@ module MzML
       dtype = @intensity_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
       @intensity = data.unpack(dtype)
     end
-
-    public
-    # return the retention time in seconds
-    def retention_time_sec
-      @e[:retentionTime] =~ /^PT(\d+\.\d+)S$/
-      $1.to_f
-    end
   end
 
-  class MzFile
-    include MzXml
-
-    def initialize (mzXmlFile )
-      @file = File.open(mzXmlFile, "r")
-      @file.readline
-      if (@file.readline =~  /mzData/) then
-        @isMzData = true
-      else
-        @isMzData = false
-      end
-      @offset = parse_index_offset
-      @index = parse_index
-      @header = parse_header
-      @basepeak = nil
-      @file.pos = 0
-    end
-    # Boolean determining whether the opened file is an mzData file, rather than mzXML
-    attr :isMzData
-    # The scan index read (or computed) from the mzXML/mzData file. A Hash of {scanNum => file_position}
-    #--
-    # should work on both file types
-    attr :index
-    # The mzXML/mzData header annotations (should have some useful information in it ;-) ) as REXML::Element
-    attr :header
-    # The base peak chromatograph (*WARNING* Calculated the first time it is accessed, which may take a bit of time)
-    attr :basePeak
-
-    private
-    # Parses the indexOffset from mzXML files
-    def parse_index_offset
-      return -1 if @isMzData
-      r = %r{\<indexOffset\>(\d+)\<\/indexOffset\>}
-      seekoffset = -120
-      while true
-        self.seek(seekoffset, IO::SEEK_END)
-        if (r.match(self.read)) then
-          return  $1.to_i
-        end
-        seekoffset -= 10
-        return -1 if seekoffset <= -1000
-      end
-    end
-
-    # Return a hash of scans, where {scan number} = file offset
-    def parse_index
-      if (@offset < 0) then
-        return compute_index
-      end
-      r= %r{\<offset\s+id=\"(\d+)\"\>(\d+)\<\/offset\>}
-      @file.pos = @offset
-      index = {}
-      while (!@file.eof?)
-        next unless (r.match(@file.readline))
-        index[$1.to_i] = $2.to_i
-      end
-      ## now check the index, otherwise recompute it!!!
-      # beginning
-      return compute_index if index.empty?
-      r =/\<scan|\<spectrum\sid/
-      tmpkeys = index.keys.sort
-      @file.pos = index[tmpkeys.first]
-      if (!(@file.readline =~ r ))
-        index = compute_index
-      else
-        #middle
-        @file.pos = index[tmpkeys[tmpkeys.length/2]]
-        if (!(@file.readline =~ r))
-          index = compute_index
-        else
-          #end
-          @file.pos = index[tmpkeys.last]
-          if (!(@file.readline =~ r))
-            index = compute_index
-          end
-        end
-      end
-      #reset the file to the first scan position
-      @file.pos = index[tmpkeys.first]
-      #return the index
-      index
-    end
-
-    # Parses the file header information
-    def parse_header
-      @file.pos = 0
-      r = %r{\<scan\s|\<spectrum\s}
-      xml = ""
-      while true
-        l = @file.readline
-        break if l =~ r
-        xml << l
-      end
-      if (@isMzData) then
-        xml << "</spectrumList></mzData>"
-      else
-        xml << "</msRun></mzXML>"
-      end
-      xml.empty? ? nil : parse(xml)
-    end
-
-    # Computes the index by scanning the entire file
-    def compute_index
-      @file.rewind
-      r = %r{\<scan\snum\=\"(\d+)\"|\<spectrum\sid\=\"(\d+)\"}
-      index  = {}
-      while (!@file.eof)
-        p = @file.pos
-        if (r.match(@file.readline)) then
-          m = $1 ? $1 : $2
-          index[m.to_i] = p
-        end
-      end
-      index
-    end
-    # parses a bit of XML into a REXML::Element node
-    protected
-
-    def parse_base_peak #:nodoc: all
-      @file.pos = 0
-      @basepeak = [[],[]]
-      if (@isMzData)
-        # MUCH more expensive to compute
-        while (s = next_scan)
-          p = get_peaks(s)
-          max_int = -1.0
-          bp_idx = 0
-          p[1].each_index do |i|
-            bp_idx = i if p[1][i] > max_int
-          end
-          @basepeak[0].push(p[0][bp_idx])
-          @basepeak[0].push(p[1][bp_idx])
-        end
-      else
-        numr= %r{\<scan num\=[\"|\'](\d+)[\"|\']}
-        bpr= %r{basePeak(\w+)\=[\"|\'](\S+)[\"|\']}
-        num = 0
-        while(!@file.eof?)
-          l = @file.readline
-          if (m = numr.match(l))
-            num = m[1].to_i
-            next
-          end
-          if (m = bpr.match(l))
-            if m[1] == "Mz"
-              @basepeak[0].push(num)
-            else
-              @basepeak[1].push(m[2].to_f)
-            end
-          end
-        end
-      end
-      @basepeak
-    end
 
     def get_scan_from_curr_pos #:nodoc:
       return nil if (@file.eof)
@@ -363,7 +235,6 @@ module MzML
       xml.empty? ? nil :  parse(xml)
     end
 
-    public
     # Return a Scan for a given scan number
     #
     # @param [Fixnum] the scan number to grab
@@ -387,11 +258,6 @@ module MzML
       end
       @file.pos = lastPos
       Scan.new(get_scan_from_curr_pos)
-    end
-
-    def basePeak #:nodoc: all
-      return @basepeak if @basepeak
-      parse_base_peak
     end
   end
 end
