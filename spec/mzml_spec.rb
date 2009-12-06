@@ -31,7 +31,19 @@ describe MzML do
       s = mz.spectrum(mz.index[:spectrum].keys.first)
       s.intensity.should_not be_nil
     end
+
+    it "should be the same mz array as the MGF file" do
+      mgf  = parse_mgf(@mgf)
+      mz = MzML::Doc.new(@file)
+      # grab this same spectrum from the mzML file
+      s = mz.spectrum(mgf.title)
+      i = s.intensity.map {|e| (e * 1000).to_i() / 1000.0}
+      m = s.mz.map {|e| (e * 1000).to_i() / 1000.0}
+      i.join(", ").should be == mgf.intensity.join(", ")
+      m.join(", ").should be == mgf.mz.join(", ")
+    end
   end
+
   context "Given a valid mzML file that uses compression" do
     it "should unmarshall and uncompress the 64 byte mz array" do
       mz = MzML::Doc.new(@compressed)

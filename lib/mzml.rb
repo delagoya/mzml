@@ -63,7 +63,7 @@ module MzML
         self.seek @index[:chromatogram][chromatogram_id]
         parse_next
       else
-        raise MzML::BadID "Invalid ID '#{chromatogram_id}'"
+        raise MzML::BadIdentifier.new("Invalid ID '#{chromatogram_id}'")
       end
     end
 
@@ -73,7 +73,7 @@ module MzML
         return Spectrum.new(parse_next())
 
       else
-        raise MzML::BadID "Invalid ID '#{spectrum_id}'"
+        raise MzML::BadIdentifier.new("Invalid ID '#{spectrum_id}'")
       end
     end
 
