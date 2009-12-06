@@ -15,62 +15,66 @@ require 'zlib'
 
 # == MzML
 #
-# A non-validating mzML parser.
+# A non-validating mzML v 1.1.0 parser. Most annotation is left as XML DOM
+# objects. See the Nokogiri::XML::Node and Nokogiri::XML::NodeSet
+# documentation on how to work with these.
 #
 # ===USAGE:
 #
-#     require 'mzxml'
+#     require 'mzml'
 #     mzml =  MzML::Doc.new("test.mzXML")
-#     index = mzxml.index # Returns a hash of scan numbers and the file byte position
-#     # get the first scan number
-#     firstScanNumber = index.keys.sort.first
-#     # could also just ask for next_scan like "mzxml.next_scan"
-#     # now got get it!
-#     scan = mzxml.scan(firstScanNumber)
-#
-#     # "scan" is now MzXml::Scan object with mz, intensity arrays retrieved lazily from either Scan#mz and Scan#i
-#     # get the whole mz array
-#     mz = scan.mz
-#     # get just the 23rd mz value
-#     mz_23 = scan.mz(23)
 
 module MzML
 
+  # An internal module containing useful regular expressions
   module RGX
-    # parses out the file offset of the indexList element
+    # The file byte offset of the start of the file index
     INDEX_OFFSET = /<indexListOffset>(\d+)<\/indexListOffset>/
-    #
-    SPCT_LIST_START =  /<spectrumList.+count\=["'](\d+)/
-    CHRM_LIST_START =  /<chromatogramList.+count\=["'](\d+)/
-    SPCT_START = /<spectrum/
-    SPCT_END = /<\/spectrum>/
-    CHRM_START = /<chromatogram\s/
-    CHRM_END = /<\/chromatogram>/
+    # The start of a either a spectrumList or chromatographList
+    DATA_LIST_START =  /<(spectrum|chromatogram)List\s.*count\=["'](\d+)/m
+    # The start spectrum or chromatogram element
+    DATA_START = /<(spectrum|chromatogram)\s.*id=["']([^'"]+)["']/m
+    # The end spectrum or chromatogram element
+    DATA_END = /(<\/(spectrum|chromatogram)>)/
   end
 
   def parse(xml)
     Nokogiri::XML.parse(xml).root
   end
 
-  class UnsupportedFile < Error
+  class UnsupportedFileFormat < Exception
   end
+  class BadIdentifier < Exception
+  end
+
   class Doc < File
-    attr_reader :index, :fname, :spectrum_count, :chromatogram_count
+    attr_reader :index, :fname, :spectrum_count, :chromatogram_count, :node
 
     def initialize(mz_fname)
       unless mz_fname =~ /\.mzML$/
-        raise UnsupportedFile "File extension must be .\"mzML\""
+        raise MzML::UnsupportedFileFormat.new  "File extension must be .\"mzML\""
       end
       super(mz_fname, "r")
       @index = parse_index_list
     end
 
-    def chromatrogram(chromatogram_id)
-      @index[:chromatogram][chromatogram_id]
+    def chromatogram(chromatogram_id)
+      if @index[:chromatogram].has_key? chromatogram_id
+        self.seek @index[:chromatogram][chromatogram_id]
+        parse_next
+      else
+        raise MzML::BadID "Invalid ID '#{chromatogram_id}'"
+      end
     end
 
     def spectrum(spectrum_id)
-      @index[:spectrum][spectrum_id]
+      if @index[:spectrum].has_key? spectrum_id
+        self.seek @index[:spectrum][spectrum_id]
+        return Spectrum.new(parse_next())
+
+      else
+        raise MzML::BadID "Invalid ID '#{spectrum_id}'"
+      end
     end
 
     # private
@@ -88,13 +92,11 @@ module MzML
       @index = {}
       self.seek(offset.to_i)
       tmp = Nokogiri::XML.parse(self.read).root
-      tmp.css("index").each do |i|
-        n = i[:name].to_sym
-        i.css("offset").each do |o|
-          prev = nil
-          @index[n][o[:idRef]] = [o.text().to_i,
-            (@index[n][prev] || offset) ]
-          prev = o[:idRef]
+      tmp.css("index").each do |idx|
+        index_type = idx[:name].to_sym
+        @index[index_type] = {}
+        idx.css("offset").each do |o|
+          @index[index_type][o[:idRef]] = o.text().to_i
         end
       end
       return @index
@@ -105,51 +107,55 @@ module MzML
       # start at the beginning.
       self.rewind
       # fast forward to the first spectrum or chromatograph
-      rgx_start = /<spectrumList|<chromatogramList/
       buffer = ''
       while !self.eof
         buffer += self.read(1024)
-        if start_pos = buffer =~ rgx_start
-          self.seek start_pos + 10
-          buffer = self.read(200)
-          start_pos = buffer =~ /<spectrum|<chromatogram/
-          self.seek(self.pos - 200 + start_pos)
+        if start_pos = buffer =~ MzML::RGX::DATA_START
+          self.seek start_pos
           break
         end
       end
       # for each particular entity start to fill in the index
       buffer = ''
-      rgx_start = /<(spectrum|chromatogram)\s.*id=["']([^"']+)["']/m
+      rgx_start = /<(spectrum|chromatogram)\s.*id=["']([^"']+)["']/
       while !self.eof
-        buffer = self.read(1024)
+        buffer += self.read(1024)
         if start_pos = buffer =~ rgx_start
-          curr_pos = self.pos - buffer.length + start_pos
-          @index[$1.to_sym][$2] = [curr_pos, prev_pos]
-          prev_pos = curr_pos
+          start_pos = self.pos - buffer.length + start_pos
+          @index[$1.to_sym][$2] = start_pos
+          buffer = ''
         end
-        # need to be careful here. debug it.
-        self.seek(self.pos - 100) unless self.eof
       end
       return @index
+    end
+
+    def parse_next
+      buffer = self.read(1024)
+      end_pos = nil
+      while(!self.eof)
+        if end_pos = buffer =~ MzML::RGX::DATA_END
+          buffer = buffer.slice(0..(end_pos + $1.length))
+          break
+        end
+        buffer += self.read(1024)
+      end
+      return Nokogiri::XML.parse(buffer)
     end
   end
 
   class Spectrum
-    include MzXml
     attr_accessor :id, :default_array_length, :spot_id, :type,\
     :charge, :precursor, :base_peak_mz, :base_peak_intensity, :ms_level, \
-    :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_node, :intensity_node \
+    :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_node, :intensity_node, \
     :mz, :intensity, :precursor_list, :scan_list, :retention_time
     attr_reader :node, :params
 
     # mz & intensity arrays will be don by proper methods maybe.
-    def initialize(spectrum_xml_str)
-      @node = parse(spectrum_xml_str)
+    def initialize(spectrum_node)
+      @node = spectrum_node
       @params = {}
       parse_element()
-      parse_peaks()
     end
-
 
     protected
     # This method pulls out all of the annotation from the XML node
@@ -199,7 +205,7 @@ module MzML
     end
 
     def parse_binary_data
-      @mz_node = @node.xpath("binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000514']").first.parent
+      @mz_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000514']").first.parent
       data = Base64.decode64(@mz_node.xpath("binary").text)
       if @mz_node.xpath("cvParam[@accession='MS:1000574']")[0]
         # need to uncompress the data
@@ -208,7 +214,7 @@ module MzML
       # 64-bit floats? default is 32-bit
       dtype = @mz_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
       @mz = data.unpack(dtype)
-      @intensity_node = @node.xpath("binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000515']").first.parent
+      @intensity_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000515']").first.parent
       data = Base64.decode64(@intensity_node.xpath("binary").text)
       if @intensity_node.xpath("cvParam[@accession='MS:1000574']")[0]
         # need to uncompress the data
@@ -217,47 +223,6 @@ module MzML
       # 64-bit floats? default is 32-bit
       dtype = @intensity_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
       @intensity = data.unpack(dtype)
-    end
-  end
-
-
-    def get_scan_from_curr_pos #:nodoc:
-      return nil if (@file.eof)
-      xml = ""
-      while (!@file.eof )
-        l = @file.readline
-        if (l =~ /\<\/scan\>|\<\/spectrum\>/) then
-          xml.concat(l)
-          break
-        end
-        xml.concat(l)
-      end
-      xml.empty? ? nil :  parse(xml)
-    end
-
-    # Return a Scan for a given scan number
-    #
-    # @param [Fixnum] the scan number to grab
-    def scan scanNum
-      @file.pos = @index[scanNum]
-      Scan.new(get_scan_from_curr_pos)
-    end
-    # Return a Scan node for the next scan sequentially encountered with respect to the file.
-    # This may not correspond to any notion of scan ordering by ms_level, retention time, etc., it is
-    # simply related to file read position.
-    #
-    # This method pays no attention to the last scan called in your routines. If you made any other API
-    # calls that change the file read position (most methods do), the result will be unexpected. Use at your own risk  :-P
-
-    def next_scan
-      lastPos = @file.pos
-      while (!@file.eof )
-        l = @file.readline
-        break if l =~ /\<scan|\<spectrum\s/
-        lastPos = @file.pos
-      end
-      @file.pos = lastPos
-      Scan.new(get_scan_from_curr_pos)
     end
   end
 end
