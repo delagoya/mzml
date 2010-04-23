@@ -39,7 +39,7 @@ Gem::Specification.new do |s|
   s.homepage = %q{http://github.com/delagoya/mzml}
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
-  s.rubygems_version = %q{1.3.5}
+  s.rubygems_version = %q{1.3.6}
   s.summary = %q{A non-validating mzML parser}
   s.test_files = [
     "spec/mzml_spec.rb",
@@ -51,15 +51,15 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
-      s.add_development_dependency(%q<rspec>, [">= 1.2.9"])
-      s.add_runtime_dependency(%q<nokogiri>, [">= 1.3.3"])
+      s.add_development_dependency(%q<rspec>, ["= 1.3.0"])
+      s.add_runtime_dependency(%q<nokogiri>, ["= 1.4.1"])
     else
-      s.add_dependency(%q<rspec>, [">= 1.2.9"])
-      s.add_dependency(%q<nokogiri>, [">= 1.3.3"])
+      s.add_dependency(%q<rspec>, ["= 1.3.0"])
+      s.add_dependency(%q<nokogiri>, ["= 1.4.1"])
     end
   else
-    s.add_dependency(%q<rspec>, [">= 1.2.9"])
-    s.add_dependency(%q<nokogiri>, [">= 1.3.3"])
+    s.add_dependency(%q<rspec>, ["= 1.3.0"])
+    s.add_dependency(%q<nokogiri>, ["= 1.4.1"])
   end
 end
 
