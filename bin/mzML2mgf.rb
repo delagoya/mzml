@@ -21,11 +21,12 @@ mzml =  MzML::Doc.new(ARGV[0])
 sorted_keys = mzml.parse_index_list[:spectrum].keys.sort{ |x,y| x.split('=')[3].to_i <=> y.split('=')[3].to_i }
 
 sorted_keys.each do |k|
-  
+
   s = mzml.spectrum(k)
+
   unless  s.precursor_list.nil? || s.precursor_list.empty?
-  
- 
+
+
     #now we print!
 
     puts "BEGIN IONS"
@@ -37,16 +38,17 @@ sorted_keys.each do |k|
 
       puts "#{sprintf('%5.7f', s.mz[i])} #{sprintf('%4.9f', s.intensity[i])}"
 
+
     end
 
 
     puts "END IONS"
 
-    
-  end
-  
 
-  
+  end
+
+
+
 end
 
 
