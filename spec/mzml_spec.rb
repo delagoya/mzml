@@ -26,6 +26,7 @@ describe MzML do
       s = mz.spectrum(mz.index[:spectrum].keys.first)
       s.mz.should_not be_nil
     end
+    
     it "should unmarshall the a 32 byte intensity array" do
       mz = MzML::Doc.new(@file)
       s = mz.spectrum(mz.index[:spectrum].keys.first)
@@ -42,7 +43,39 @@ describe MzML do
       i.join(", ").should be == mgf.intensity.join(", ")
       m.join(", ").should be == mgf.mz.join(", ")
     end
+
+    it "should get a spectrum's id, default array length, retention time" do
+      mz = MzML::Doc.new(@file)
+      s = mz.spectrum(mz.index[:spectrum].keys.first)
+      s.id.should_not be_nil
+      s.default_array_length.should_not be_nil
+      s.retention_time.should_not be_nil
+
+    end
+
+    it "should get a spectrum's parent information if it has a precursor" do
+      mz = MzML::Doc.new(@file)
+      found_at_least_one_precursor = false
+      mz.index[:spectrum].keys.each do |k|
+        s = mz.spectrum(k)
+        if ! s.precursor_list.empty?
+          s.parent_mass.should_not be_nil
+          s.parent_intensity.should_not be_nil
+          found_at_least_one_precursor = true
+          break
+        end
+        
+      end
+      
+      found_at_least_one_precursor.should == true
+      
+
+    end
+    
+
+
   end
+  
 
   context "Given a valid mzML file that uses compression" do
     it "should unmarshall and uncompress the 64 byte mz array" do

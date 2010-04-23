@@ -147,13 +147,15 @@ module MzML
     attr_accessor :id, :default_array_length, :spot_id, :type,\
     :charge, :precursor, :base_peak_mz, :base_peak_intensity, :ms_level, \
     :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_node, :intensity_node, \
-    :mz, :intensity, :precursor_list, :scan_list, :retention_time
+    :mz, :intensity, :precursor_list, :scan_list, :retention_time, :parent_mass, :parent_intensity
+    
     attr_reader :node, :params
 
     # mz & intensity arrays will be don by proper methods maybe.
     def initialize(spectrum_node)
       @node = spectrum_node
       @params = {}
+      @precursor_list = []
       parse_element()
     end
 
@@ -161,11 +163,11 @@ module MzML
     # This method pulls out all of the annotation from the XML node
     def parse_element
       # id
-      @id = @node[:id]
-      @default_array_length = @node[:defaultArrayLength]
-      @spot_id = @node[:spotID]
+      @id = @node.xpath("spectrum")[0][:id]
+      @default_array_length = @node.xpath("spectrum")[0][:defaultArrayLength]
+      @spot_id = @node.xpath("spectrum")[0][:spotID]
       # now reaching into params
-      @params = @node.xpath("cvParam").inject({}) do  |memo,prm|
+      @params = @node.xpath("spectrum/cvParam").inject({}) do  |memo,prm|
         memo[prm[:name]] = prm[:value]
         memo
       end
@@ -178,13 +180,14 @@ module MzML
       # polarity
       # representation
       # precursor list
-      if (@node.xpath("precursorList")[0])
+      if (@node.xpath("spectrum/precursorList")[0])
         parse_precursor_list()
+        get_parent_info()
       else
         @precursor_list = nil
       end
       # scan list
-      if (@node.xpath("scanList")[0])
+      if (@node.xpath("spectrum/scanList")[0])
         @scan_list = parse_scan_list()
       else
         @scan_list = nil
@@ -194,14 +197,27 @@ module MzML
     end
 
     def parse_precursor_list
-      @precursor_list = @node.css("precursorList > precursor").each do |p|
+      @node.css("precursorList > precursor").each do |p|
         [p[:spectrumRef], p]
+        @precursor_list << p
       end
     end
 
+    def get_parent_info
+      
+      unless @precursor_list.empty?
+        
+        @parent_mass = @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0][:value] unless @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0].nil?
+        @parent_intensity = @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0][:value] unless @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0].nil?
+        
+      end
+        
+      
+    end
+
     def parse_scan_list
-      @scan_list = @node.xpath("scanList/scan")
-      @retention_time = @node.xpath("scanList/scan/cvParam[@accesion='MS:1000016']")[0]
+      @scan_list = @node.xpath("spectrum/scanList/scan")
+      @retention_time = @node.xpath("spectrum/scanList/scan/cvParam[@accession='MS:1000016']")[0][:value] unless @node.xpath("spectrum/scanList/scan/cvParam[@accession='MS:1000016']")[0].nil?
     end
 
     def parse_binary_data
@@ -214,6 +230,7 @@ module MzML
       # 64-bit floats? default is 32-bit
       dtype = @mz_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
       @mz = data.unpack(dtype)
+      
       @intensity_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000515']").first.parent
       data = Base64.decode64(@intensity_node.xpath("binary").text)
       if @intensity_node.xpath("cvParam[@accession='MS:1000574']")[0]

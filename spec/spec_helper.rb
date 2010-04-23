@@ -15,7 +15,7 @@ def parse_mgf(fname)
     when /^TITLE=(.+)/
       mgf.title = $1
     when /^\d/
-      m,i = l.split().map{|e| (e.to_f * 1000).to_i() / 1000.0 }
+      m,i = l.split(' ').map{|e| (e.to_f * 1000).to_i() / 1000.0 }
       mgf.mz << m
       mgf.intensity << i
     end

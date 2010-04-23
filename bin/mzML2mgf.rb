@@ -24,28 +24,19 @@ sorted_keys.each do |k|
   
   s = mzml.spectrum(k)
 
-  unless s.node.xpath("spectrum/precursorList/precursor")[0].nil?
-    
-    #need to get info that gem is not producing..
-
-    id = s.node.xpath("spectrum")[0][:id]
-
-    rtime = s.node.xpath("spectrum/scanList/scan/cvParam[@accession='MS:1000016']")[0][:value]
-    
-    p_intensity = s.node.xpath("spectrum/precursorList/precursor/selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0][:value]
-    
-    p_mass = s.node.xpath("spectrum/precursorList/precursor/selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0][:value]
+  unless s.precursor_list.nil? || s.precursor_list.empty?
   
+ 
     #now we print!
 
     puts "BEGIN IONS"
-    puts "TITLE=#{id}"
-    puts "RTINSECONDS=#{rtime.to_s[0..10]}"
-    puts "PEPMASS=#{p_mass.to_s[0..10]} #{p_intensity.to_s[0..10]}"
+    puts "TITLE=#{s.id}"
+    puts "RTINSECONDS=#{s.retention_time.to_s[0..9]}"
+    puts "PEPMASS=#{s.parent_mass.to_s[0..9]} #{s.parent_intensity.to_s[0..9]}"
 
     0.upto(s.mz.length-1) do |i|
 
-      puts "#{s.mz[i].to_s[0..10]} #{s.intensity[i].to_s[0..10]}"
+      puts "#{s.mz[i].to_s[0..9]} #{s.intensity[i].to_s[0..9]}"
 
     end
 

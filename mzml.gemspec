@@ -9,9 +9,11 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Angel Pizarro"]
-  s.date = %q{2009-12-06}
+  s.date = %q{2010-04-23}
+  s.default_executable = %q{mzML2mgf.rb}
   s.description = %q{A non-validating mzML parser. MzML is a standard data format for representing mass spectrometry data.}
   s.email = %q{angel@delagoya.com}
+  s.executables = ["mzML2mgf.rb"]
   s.extra_rdoc_files = [
     "LICENSE",
      "README.rdoc"
@@ -24,6 +26,7 @@ Gem::Specification.new do |s|
      "README.rdoc",
      "Rakefile",
      "VERSION",
+     "bin/mzML2mgf.rb",
      "lib/mzml.rb",
      "mzml.gemspec",
      "spec/mzml_spec.rb",
