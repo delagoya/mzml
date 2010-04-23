@@ -147,7 +147,7 @@ module MzML
     attr_accessor :id, :default_array_length, :spot_id, :type,\
     :charge, :precursor, :base_peak_mz, :base_peak_intensity, :ms_level, \
     :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_node, :intensity_node, \
-    :mz, :intensity, :precursor_list, :scan_list, :retention_time, :parent_mass, :parent_intensity
+    :mz, :intensity, :precursor_list, :scan_list, :retention_time, :precursor_mass, :precursor_intensity
     
     attr_reader :node, :params
 
@@ -180,11 +180,11 @@ module MzML
       # polarity
       # representation
       # precursor list
-      if (@node.xpath("spectrum/precursorList")[0])
+      if (! @node.xpath("spectrum/precursorList")[0].nil?)
         parse_precursor_list()
         get_parent_info()
       else
-        @precursor_list = nil
+        @precursor_list = []
       end
       # scan list
       if (@node.xpath("spectrum/scanList")[0])
@@ -207,8 +207,8 @@ module MzML
       
       unless @precursor_list.empty?
         
-        @parent_mass = @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0][:value] unless @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0].nil?
-        @parent_intensity = @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0][:value] unless @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0].nil?
+        @precursor_mass = @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0][:value] unless @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000744']")[0].nil?
+        @precursor_intensity = @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0][:value] unless @precursor_list[0].xpath("selectedIonList/selectedIon/cvParam[@accession='MS:1000042']")[0].nil?
         
       end
         

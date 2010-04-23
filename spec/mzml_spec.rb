@@ -53,14 +53,14 @@ describe MzML do
 
     end
 
-    it "should get a spectrum's parent information if it has a precursor" do
+    it "should get a spectrum's precursor information if it has a precursor" do
       mz = MzML::Doc.new(@file)
       found_at_least_one_precursor = false
       mz.index[:spectrum].keys.each do |k|
         s = mz.spectrum(k)
         if ! s.precursor_list.empty?
-          s.parent_mass.should_not be_nil
-          s.parent_intensity.should_not be_nil
+          s.precursor_mass.should_not be_nil
+          s.precursor_intensity.should_not be_nil
           found_at_least_one_precursor = true
           break
         end

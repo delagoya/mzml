@@ -23,20 +23,19 @@ sorted_keys = mzml.parse_index_list[:spectrum].keys.sort{ |x,y| x.split('=')[3].
 sorted_keys.each do |k|
   
   s = mzml.spectrum(k)
-
-  unless s.precursor_list.nil? || s.precursor_list.empty?
+  unless  s.precursor_list.nil? || s.precursor_list.empty?
   
  
     #now we print!
 
     puts "BEGIN IONS"
     puts "TITLE=#{s.id}"
-    puts "RTINSECONDS=#{s.retention_time.to_s[0..9]}"
-    puts "PEPMASS=#{s.parent_mass.to_s[0..9]} #{s.parent_intensity.to_s[0..9]}"
+    puts "RTINSECONDS=#{s.retention_time}"
+    puts "PEPMASS=#{s.precursor_mass} #{s.precursor_intensity}"
 
     0.upto(s.mz.length-1) do |i|
 
-      puts "#{s.mz[i].to_s[0..9]} #{s.intensity[i].to_s[0..9]}"
+      puts "#{sprintf('%5.7f', s.mz[i])} #{sprintf('%4.9f', s.intensity[i])}"
 
     end
 
