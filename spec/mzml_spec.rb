@@ -3,9 +3,9 @@ require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 describe MzML do
   before(:all) do
     # set the input file name
-    @file = File.join(File.dirname(__FILE__),  "small.mzML")
-    @compressed = File.join(File.dirname(__FILE__),  "small.compressed.mzML")
-    @mgf = File.join(File.dirname(__FILE__),  "small.mgf")
+    @file = File.join(File.dirname(__FILE__),  "sample.mzML")
+    @compressed = File.join(File.dirname(__FILE__),  "sample.compressed.mzML")
+    @mgf = File.join(File.dirname(__FILE__),  "sample.mgf")
   end
 
   context "Given a valid mzML file" do
@@ -44,13 +44,22 @@ describe MzML do
       m.join(", ").should be == mgf.mz.join(", ")
     end
 
-    it "should get a spectrum's id, default array length, retention time" do
+    it "should get a spectrum's id" do
       mz = MzML::Doc.new(@file)
       s = mz.spectrum(mz.index[:spectrum].keys.first)
       s.id.should_not be_nil
-      s.default_array_length.should_not be_nil
-      s.retention_time.should_not be_nil
+    end
 
+    it "should get a spectrum's default array length" do
+      mz = MzML::Doc.new(@file)
+      s = mz.spectrum(mz.index[:spectrum].keys.first)
+      s.default_array_length.should_not be_nil
+    end
+
+    it "should get a spectrum's retention time" do
+      mz = MzML::Doc.new(@file)
+      s = mz.spectrum(mz.index[:spectrum].keys.first)
+      s.retention_time.should_not be_nil
     end
 
     it "should get a spectrum's precursor information if it has a precursor" do
@@ -64,12 +73,8 @@ describe MzML do
           found_at_least_one_precursor = true
           break
         end
-        
-      end
-      
+      end      
       found_at_least_one_precursor.should == true
-      
-
     end
     
 

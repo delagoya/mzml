@@ -18,6 +18,8 @@ def parse_mgf(fname)
       m,i = l.split(' ').map{|e| (e.to_f * 1000).to_i() / 1000.0 }
       mgf.mz << m
       mgf.intensity << i
+    when /^END IONS/
+      break
     end
   end
   return mgf
