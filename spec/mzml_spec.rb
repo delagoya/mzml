@@ -5,6 +5,7 @@ describe MzML do
     # set the input file name
     @file = File.join(File.dirname(__FILE__),  "sample.mzML")
     @compressed = File.join(File.dirname(__FILE__),  "sample.compressed.mzML")
+    @unindexed = File.join(File.dirname(__FILE__),  "sample.unindexed.mzML")
     @mgf = File.join(File.dirname(__FILE__),  "sample.mgf")
   end
 
@@ -93,6 +94,21 @@ describe MzML do
       mz = MzML::Doc.new(@compressed)
       s = mz.spectrum(mz.index[:spectrum].keys.first)
       s.intensity.should_not be_nil
+    end
+  end
+
+  # TOPPView outputs mzML with no indexedmzML wrapper
+  context 'Given a valid mzML file without an index wrapper' do
+    it 'should be able to retrieve by index' do
+      mz = MzML::Doc.new(@unindexed)
+      s = mz.spectrum(mz.index[:spectrum].keys.first)
+      s.intensity.should_not be_nil
+    end
+    it 'does not fail when parsing a spectrum without binary data' do
+      mz = MzML::Doc.new(@unindexed)
+      s = mz.spectrum(mz.index[:spectrum].keys.last)
+      s.should_not be_nil
+      s.intensity.should be_nil
     end
   end
 end
