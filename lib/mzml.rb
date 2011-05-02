@@ -103,7 +103,7 @@ module MzML
     end
 
     def compute_index_list
-      @index = {}
+      @index = Hash.new {|h,k| h[k] = {} }
       # start at the beginning.
       self.rewind
       # fast forward to the first spectrum or chromatograph
@@ -221,25 +221,31 @@ module MzML
     end
 
     def parse_binary_data
-      @mz_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000514']").first.parent
-      data = Base64.decode64(@mz_node.xpath("binary").text)
-      if @mz_node.xpath("cvParam[@accession='MS:1000574']")[0]
-        # need to uncompress the data
-        data = Zlib::Inflate.inflate(data)
-      end
-      # 64-bit floats? default is 32-bit
-      dtype = @mz_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
-      @mz = data.unpack(dtype)
-      
-      @intensity_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000515']").first.parent
-      data = Base64.decode64(@intensity_node.xpath("binary").text)
-      if @intensity_node.xpath("cvParam[@accession='MS:1000574']")[0]
-        # need to uncompress the data
-        data = Zlib::Inflate.inflate(data)
-      end
-      # 64-bit floats? default is 32-bit
-      dtype = @intensity_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
-      @intensity = data.unpack(dtype)
+       cv_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000514']").first
+       if cv_node
+         @mz_node = cv_node.parent
+         data = Base64.decode64(@mz_node.xpath("binary").text)
+         if @mz_node.xpath("cvParam[@accession='MS:1000574']")[0]
+           # need to uncompress the data
+           data = Zlib::Inflate.inflate(data)
+         end
+         # 64-bit floats? default is 32-bit
+         dtype = @mz_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
+         @mz = data.unpack(dtype)
+       end
+
+       cv_node = @node.xpath("spectrum/binaryDataArrayList/binaryDataArray/cvParam[@accession='MS:1000515']").first
+       if cv_node
+         @intensity_node = cv_node.parent
+         data = Base64.decode64(@intensity_node.xpath("binary").text)
+         if @intensity_node.xpath("cvParam[@accession='MS:1000574']")[0]
+           # need to uncompress the data
+           data = Zlib::Inflate.inflate(data)
+         end
+         # 64-bit floats? default is 32-bit
+         dtype = @intensity_node.xpath("cvParam[@accession='MS:1000523']")[0] ? "E*" : "e*"
+         @intensity = data.unpack(dtype)
+       end
     end
   end
 end
