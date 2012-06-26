@@ -20,3 +20,4 @@ doc
 pkg
 .yardoc
 ## PROJECT::SPECIFIC
+scratch.rb
