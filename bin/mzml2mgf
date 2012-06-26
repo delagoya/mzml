@@ -1,22 +1,6 @@
-#!/opt/local/bin/ruby
-
-################################
-####
-##
-#     David Austin - UPENN
-#     converts mzML to MGF format
-#     set up to replicate msconvert but muuchh slower
-#
-
-require 'rubygems'
+#!/usr/bin/env ruby
 require 'mzml'
-
-
-#first load nokogiri document
-
 mzml =  MzML::Doc.new(ARGV[0])
-
-#now loop through each spectrum.. sort first to be the same as msconvert
 
 sorted_keys = mzml.parse_index_list[:spectrum].keys.sort{ |x,y| x.split('=')[3].to_i <=> y.split('=')[3].to_i }
 
