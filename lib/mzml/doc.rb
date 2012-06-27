@@ -43,7 +43,19 @@ module MzML
     Nokogiri::XML.parse(xml).root
   end
 
+  # The main mzML parser class, it is a subclass of the File class from the
+  # Ruby standard library in that it places a read cursor on the mzML file,
+  # and will skip around using byte-offsets. We utilize the index at the
+  # end of mzML files to facilitate random access of spectra.
+  #
+  # The {#each} method will cycle through all of the spectrum in a file, starting
+  # from the first one each time. If you would rather access the spectra randomly,
+  # the {#spectrum_list} attribute contains the ordered list of specturm identifiers.
+  # You can access the MzML::Spectrum objects by feeding these identifiers to the {#spectrum}
+  # method.
   class Doc < ::File
+
+    # Open a file handle to a mzML document
     def initialize(mz_fname)
       unless mz_fname =~ /\.mzML$/
         raise MzML::UnsupportedFileFormat.new  "File extension must be .\"mzML\""
@@ -57,6 +69,9 @@ module MzML
     end
     attr_reader :index, :fname, :spectrum_list, :spectrum_count, :chromatogram_list, :chromatogram_count
 
+    # Fetch a {MzML::Chromatogram} from the file, given the identifier
+    # @param chromatogram_id String
+    # @return {MzML::Chromatogram}
     def chromatogram(chromatogram_id)
       if @index[:chromatogram].has_key? chromatogram_id
         self.seek @index[:chromatogram][chromatogram_id]

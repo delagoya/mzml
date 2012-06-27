@@ -16,6 +16,7 @@ module MzML
 
     # Timepoints intensity values
     attr_reader :timepoint
+
     # The unit of time that the timepoints are measured in (e.g. seconds, minutes, ...)
     attr_reader :time_unit
 
@@ -28,7 +29,6 @@ module MzML
     # CV param attributes
     attr_reader :params
 
-    # mz & intensity arrays will be don by proper methods maybe.
     def initialize(node)
       @node = node
       @params = {}
@@ -36,7 +36,6 @@ module MzML
     end
 
     protected
-    # This method pulls out all of the annotation from the XML node
     def parse_element
       @id = @node[:id]
       @index_position = @node[:index].to_i

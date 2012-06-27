@@ -9,7 +9,6 @@ module MzML
     :mz, :intensity, :precursor_list, :scan_list, :retention_time, :precursor_mass,
     :precursor_intensity, :node, :params
 
-    # mz & intensity arrays will be don by proper methods maybe.
     def initialize(node)
       @node = node
       @params = {}
@@ -17,7 +16,7 @@ module MzML
       parse_element()
     end
 
-    # This method pulls out all of the annotation from the XML node
+    protected
     def parse_element
 
       # id
