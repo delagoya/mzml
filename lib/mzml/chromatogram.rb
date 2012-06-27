@@ -15,12 +15,12 @@ module MzML
     attr_reader :default_processing_ref
 
     # Timepoints intensity values
-    attr_reader :time
+    attr_reader :timepoint
     # The unit of time that the timepoints are measured in (e.g. seconds, minutes, ...)
     attr_reader :time_unit
 
     # Intensity array of values
-    attr_reader :intensities
+    attr_reader :intensity
 
     # Nokogiri::XML::Node of the document
     attr_reader :node
@@ -39,14 +39,14 @@ module MzML
     # This method pulls out all of the annotation from the XML node
     def parse_element
       @id = @node[:id]
-      @default_array_length = @node[:defaultArrayLength]
-      @index = @node[:index]
+      @index_position = @node[:index].to_i
+      @default_array_length = @node[:defaultArrayLength].to_i
       # CV parameters
       @params = @node.xpath("./cvParam").inject([]) do  |memo,prm|
-        memo << {name: prm[:name],
-          value:  prm[:value],
-          accession: prm[:accession],
-          cv: prm[:cvRef]}
+        memo << {:name =>  prm[:name],
+          :value =>   prm[:value],
+          :accession =>  prm[:accession],
+          :cv =>  prm[:cvRef]}
         memo
       end
       # binary data
@@ -71,9 +71,9 @@ module MzML
         if bd.xpath("cvParam/@accession='MS:1000595'")
           # parse the time units
           @time_unit = bd.xpath("cvParam[@accession='MS:1000595']")[0].attributes["unitName"].value
-          @timepoints = data.unpack(decode_type)
+          @timepoint = data.unpack(decode_type)
         else
-          @intensities = data.unpack(decode_type)
+          @intensity = data.unpack(decode_type)
         end
       end
     end

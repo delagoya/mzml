@@ -70,15 +70,25 @@ class TestMzML < Test::Unit::TestCase
   end
 
   # test the chromatogram object.
-  def test_chromatogram_object
 
+  def test_chromatogram_object
+    chromatogram = @mzml.chromatogram(@mzml.chromatogram_list[0])
+    assert_instance_of(MzML::Chromatogram,chromatogram)
+    assert_equal("TIC", chromatogram.id)
+    assert_equal(0, chromatogram.index)
+    assert_equal(0, chromatogram.index_position)
+    assert_equal("minute", chromatogram.time_unit)
   end
 
   def test_chromatogram_decode
-
+    chromatogram = @mzml.chromatogram(@mzml.chromatogram_list[0])
+    assert_equal(0.022838333333333332,chromatogram.timepoint[3])
+    assert_equal(441570.15625,chromatogram.intensity[3])
   end
-
   def test_compressed_chromatogram_decode
-
+    mzml = MzML::Doc.open(@compressed)
+    chromatogram = mzml.chromatogram(mzml.chromatogram_list[0])
+    assert_equal(0.022838333333333332,chromatogram.timepoint[3])
+    assert_equal(441570.15625,chromatogram.intensity[3])
   end
 end
