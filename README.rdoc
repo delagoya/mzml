@@ -1,12 +1,31 @@
-= mzml
+= mzML
 
 MzML is a standard data format for encoding mass spectrometry data. For more information see mzML the specification at http://psidev.info/index.php?q=node/257
 
-This library is a non-validating mzML version 1.1 parser/reader.
+This library is a non-validating, read-only mzML parser for mzML version 1.1.x
 
+It is built on top of the nokogiri gem for XML parsing, which itself relies on
+the libxml2 C library. The library It is relatively fast
+
+==USAGE:
+
+    require 'mzml'
+    mzml =  MzML::Doc.open("test.mzXML")
+    # to iterate through spectra
+    mzml.each do |spectrum|
+      # ... do something interesting
+    end
+    # to get an Array of spectrum IDs
+    mzml.spectrum_list
+    # to fetch a specific spectrum, whose ID you already know
+    mzml.spectrum("controllerType=0 controllerNumber=1 scan=1")
+
+You can also get chromatograms
+  mzml.each_chromatogram
+  mzml.chromatogram("TIC")
 
 == Note on Patches/Pull Requests
- 
+
 * Fork the project. It is hosted @ http://github.com/delagoya/mzml
 * Make your feature addition or bug fix.
 * Add tests for it. This is important so I don't break it in a
