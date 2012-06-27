@@ -55,12 +55,12 @@ module MzML
       @chromatogram_count = @chromatogram_list.length
       @current_spectrum_index = 0
     end
-    attr_reader :index, :fname, :spectrum_count, :chromatogram_count
+    attr_reader :index, :fname, :spectrum_list, :spectrum_count, :chromatogram_list, :chromatogram_count
 
     def chromatogram(chromatogram_id)
       if @index[:chromatogram].has_key? chromatogram_id
         self.seek @index[:chromatogram][chromatogram_id]
-        parse_next
+        return MzML::Chromatogram.new(parse_next)
       else
         raise MzML::BadIdentifier.new("Invalid ID '#{chromatogram_id}'")
       end
@@ -112,7 +112,7 @@ module MzML
       end
       @index = {}
       @spectrum_list = []
-      @chromatograph_list = []
+      @chromatogram_list = []
       self.seek(offset.to_i)
       tmp = Nokogiri::XML.parse(self.read).root
       tmp.css("index").each do |idx|
@@ -123,7 +123,7 @@ module MzML
           if index_type == :spectrum
             @spectrum_list << o[:idRef]
           else
-            @chromatograph_list << o[:idRef]
+            @chromatogram_list << o[:idRef]
           end
         end
       end
@@ -163,7 +163,7 @@ module MzML
       buffer = ''
       while(!self.eof)
         if end_pos = buffer =~ MzML::RGX::DATA_END
-          extra_content = buffer.slice!(0..(end_pos + $1.length))
+          extra_content = buffer.slice!((end_pos + $1.length)..-1)
           self.pos -= (extra_content.length)
           break
         end

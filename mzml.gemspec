@@ -3,7 +3,7 @@ $:.push File.expand_path("../lib", __FILE__)
 require "mzml/version"
 
 Gem::Specification.new do |s|
-  s.name        = "mascot-dat"
+  s.name        = "mzml"
   s.version     = MzML::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Angel Pizarro"]

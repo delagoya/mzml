@@ -10,7 +10,7 @@ module MzML
 
     # The positional index of the chromatogram in the mzML document
     attr_reader :index_position
-    alias_method :index
+    alias_method :index, :index_position
 
     attr_reader :default_processing_ref
 
@@ -73,7 +73,7 @@ module MzML
           @time_unit = bd.xpath("cvParam[@accession='MS:1000595']")[0].attributes["unitName"].value
           @timepoints = data.unpack(decode_type)
         else
-          @intensities = data.unpack(dtype)
+          @intensities = data.unpack(decode_type)
         end
       end
     end

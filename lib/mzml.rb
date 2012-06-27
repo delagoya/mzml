@@ -1,4 +1,5 @@
 require 'nokogiri'
 require 'mzml/doc'
+require 'mzml/chromatogram'
 require 'mzml/spectrum'
 require 'mzml/version'
