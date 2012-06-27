@@ -18,7 +18,15 @@
 # ===USAGE:
 #
 #     require 'mzml'
-#     mzml =  MzML::Doc.new("test.mzXML")
+#     mzml =  MzML::Doc.open("test.mzXML")
+#     # to iterate through spectra
+#     mzml.each do |spectrum|
+#       # ... do something interesting
+#     end
+#     # to get an Array of spectrum IDs
+#     mzml.spectrum_list
+#     # to fetch a specific spectrum, whose ID you already know
+#     mzml.spectrum("controllerType=0 controllerNumber=1 scan=1")
 module MzML
 
   # An internal module containing useful regular expressions
@@ -61,6 +69,7 @@ module MzML
       @spectrum_count = @spectrum_list.length
       @chromatogram_count = @chromatogram_list.length
       @current_spectrum_index = 0
+      @current_chromatogram_index = 0
     end
     attr_reader :index, :fname, :spectrum_list, :spectrum_count, :chromatogram_list, :chromatogram_count
 
@@ -93,7 +102,14 @@ module MzML
     end
     alias_method :each_spectrum, :each
 
-    def next &block
+    def each_chromatogram &block
+      @chromatogram_list.each do |chromatogram_id|
+        block.call(self.chromatogram(chromatogram_id))
+        @current_chromatogram_index += 1
+      end
+    end
+
+    def next
       if @current_spectrum_index < @spectrum_list.length
         @current_spectrum_index += 1
         self.spectrum(@spectrum_list[@current_spectrum_index - 1])
@@ -103,9 +119,20 @@ module MzML
     end
     alias_method :next_spectrum, :next
 
+    def next_chromatogram
+      if @current_chromatogram_index < @chromatogram_list.length
+        @current_chromatogram_index += 1
+        self.chromatogram(@chromatogram_list[@current_chromatogram_index - 1])
+      else
+        nil
+      end
+    end
+
     def rewind
       super
       @current_spectrum_index = 0
+      @current_chromatogram_index = 0
+      self.pos
     end
 
     private
