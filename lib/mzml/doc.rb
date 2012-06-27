@@ -33,15 +33,10 @@ module MzML
     DATA_END = /(<\/(spectrum|chromatogram)>)/
   end
 
-
   class UnsupportedFileFormat < Exception
   end
   class BadIdentifier < Exception
   end
-
-  # def parse(xml)
-  #   Nokogiri::XML.parse(xml).root
-  # end
 
   # The main mzML parser class, it is a subclass of the File class from the
   # Ruby standard library in that it places a read cursor on the mzML file,
