@@ -74,8 +74,8 @@ module MzML
     attr_reader :index, :fname, :spectrum_list, :spectrum_count, :chromatogram_list, :chromatogram_count
 
     # Fetch a {MzML::Chromatogram} from the file, given the identifier
-    # @param chromatogram_id String
-    # @return {MzML::Chromatogram}
+    # @param chromatogram_id [String]
+    # @return [MzML::Chromatogram]
     def chromatogram(chromatogram_id)
       if @index[:chromatogram].has_key? chromatogram_id
         self.seek @index[:chromatogram][chromatogram_id]
@@ -85,6 +85,9 @@ module MzML
       end
     end
 
+    # Fetch a {MzML::Spectrum} from the file, given the identifier
+    # @param spectrum_id [String]
+    # @return [MzML::Spectrum]
     def spectrum(spectrum_id)
       if @index[:spectrum].has_key? spectrum_id
         self.seek @index[:spectrum][spectrum_id]
