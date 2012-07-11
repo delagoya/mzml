@@ -6,7 +6,7 @@ module MzML
     attr_reader :id, :default_array_length, :type,
     :precursor, :base_peak_mz, :base_peak_intensity, :ms_level,
     :high_mz, :low_mz, :title, :tic, :polarity, :representation, :mz_node, :intensity_node,
-    :mz, :intensity, :precursor_list, :scan_list, :retention_time, :precursor_mass,
+    :mz, :intensity, :precursor_list, :scan_list, :retention_time,  :retention_time_unit, :precursor_mass,
     :precursor_intensity, :node, :params
 
     def initialize(node)
@@ -76,7 +76,8 @@ module MzML
     def parse_scan_list
       @scan_list = @node.xpath("scanList/scan")
       if @node.xpath("scanList/scan/cvParam/@accession='MS:1000016'")
-        @retention_time = @node.xpath("scanList/scan/cvParam[@accession='MS:1000016']")[0][:value]
+        @retention_time = @node.xpath("scanList/scan/cvParam[@accession='MS:1000016']")[0][:value].to_f
+        @retention_time_unit = @node.xpath("scanList/scan/cvParam[@accession='MS:1000016']")[0][:unitName]
       end
     end
 

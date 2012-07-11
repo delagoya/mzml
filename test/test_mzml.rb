@@ -54,6 +54,8 @@ class TestMzML < Test::Unit::TestCase
     assert_equal(586279, spectrum.tic)
     assert_equal(161140.859375, spectrum.base_peak_intensity)
     assert_equal(736.6370849609375, spectrum.base_peak_mz)
+    assert_equal(0.011218333333333334, spectrum.retention_time)
+    assert_equal('minute', spectrum.retention_time_unit)
   end
 
   def test_spectrum_decode
